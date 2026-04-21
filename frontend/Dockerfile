@@ -9,6 +9,8 @@ COPY . .
 # but for runtime environment variables we can just pass them in docker-compose.
 # We will use standalone output to reduce image size. Next.js supports this natively.
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG NEXT_PUBLIC_BACKEND_URL
+ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
 RUN npm run build
 
 # Stage 2: Run the frontend

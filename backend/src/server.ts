@@ -19,6 +19,10 @@ const io = new Server(httpServer, {
   }
 });
 
+app.get('/', (req, res) => {
+  res.send('QuickPoll API is running');
+});
+
 app.post('/api/polls', async (req, res) => {
   try {
     const { question, options } = req.body;
