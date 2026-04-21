@@ -1,0 +1,77 @@
+import express from 'express';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import cors from 'cors';
+import { store, Poll } from './store';
+import { randomUUID } from 'crypto';
+
+const app = express();
+app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000' }));
+app.use(express.json());
+
+const httpServer = createServer(app);
+const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+
+const io = new Server(httpServer, {
+  cors: {
+    origin: frontendUrl,
+    methods: ['GET', 'POST']
+  }
+});
+
+app.post('/api/polls', async (req, res) => {
+  try {
+    const { question, options } = req.body;
+    if (!question || !options || !Array.isArray(options) || options.length < 2) {
+      return res.status(400).json({ error: 'Invalid poll data. Need question and at least 2 options.' });
+    }
+
+    const newPoll: Poll = {
+      id: randomUUID(),
+      question,
+      options: options.map(opt => ({ id: randomUUID(), text: opt, votes: 0 })),
+      createdAt: Date.now()
+    };
+
+    await store.savePoll(newPoll);
+    res.status(201).json(newPoll);
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+io.on('connection', (socket) => {
+  console.log('Client connected:', socket.id);
+
+  socket.on('join_poll', async (pollId: string) => {
+    socket.join(pollId);
+    const poll = await store.getPoll(pollId);
+    if (poll) {
+      socket.emit('poll_data', poll);
+    } else {
+      socket.emit('poll_error', { message: 'Poll not found' });
+    }
+  });
+
+  socket.on('vote', async ({ pollId, optionId }) => {
+    const updatedPoll = await store.vote(pollId, optionId);
+    if (updatedPoll) {
+      io.to(pollId).emit('poll_data', updatedPoll);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
+});
+
+const PORT = process.env.PORT || 3001;
+
+async function start() {
+  await store.connect();
+  httpServer.listen(PORT, () => {
+    console.log(`Backend server running on port ${PORT}`);
+  });
+}
+
+start();
