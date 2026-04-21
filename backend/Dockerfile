@@ -1,5 +1,5 @@
 # Stage 1: Build the backend
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 COPY package*.json ./
@@ -8,7 +8,7 @@ COPY . .
 RUN npx tsc
 
 # Stage 2: Run the backend
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 
 WORKDIR /app
 COPY package*.json ./
