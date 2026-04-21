@@ -2,7 +2,8 @@
 
 import { useEffect, useState, use } from "react";
 import { socket, Poll } from "@/lib/socket";
-import { Copy, CheckCircle2 } from "lucide-react";
+import { Copy, CheckCircle2, Plus } from "lucide-react";
+import Link from "next/link";
 
 export default function PollPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = use(params);
@@ -133,6 +134,12 @@ export default function PollPage({ params }: { params: Promise<{ id: string }> }
           >
             {copied ? "Copied!" : <><Copy size={16} /> Copy</>}
           </button>
+        </div>
+
+        <div style={{ marginTop: "1rem" }}>
+          <Link href="/" className="btn btn-primary" style={{ textDecoration: "none" }}>
+            <Plus size={20} /> Create New Poll
+          </Link>
         </div>
       </div>
     </main>
