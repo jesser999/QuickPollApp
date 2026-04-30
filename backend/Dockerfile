@@ -15,5 +15,7 @@ COPY package*.json ./
 RUN npm install --omit=dev
 COPY --from=builder /app/dist ./dist
 
-EXPOSE 3001
+# Railway injects PORT dynamically; default to 3001 for local/docker-compose
+ENV PORT=3001
+EXPOSE $PORT
 CMD ["node", "dist/server.js"]
