@@ -27,13 +27,14 @@ app.post('/api/polls', async (req, res) => {
   try {
     const { question, options } = req.body;
     if (!question || !options || !Array.isArray(options) || options.length < 2) {
-      return res.status(400).json({ error: 'Invalid poll data. Need question and at least 2 options.' });
+      res.status(400).json({ error: 'Invalid poll data. Need question and at least 2 options.' });
+      return;
     }
 
     const newPoll: Poll = {
       id: randomUUID(),
       question,
-      options: options.map(opt => ({ id: randomUUID(), text: opt, votes: 0 })),
+      options: options.map((opt: string) => ({ id: randomUUID(), text: opt, votes: 0 })),
       createdAt: Date.now()
     };
 
