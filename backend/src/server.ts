@@ -5,17 +5,28 @@ import cors from 'cors';
 import { store, Poll } from './store';
 import { randomUUID } from 'crypto';
 
+// Parse FRONTEND_URL as a comma-separated list so multiple origins are
+// supported without code changes (e.g. on Railway with custom domains).
+const allowedOrigins: string | string[] = (process.env.FRONTEND_URL || 'http://localhost:3000')
+  .split(',')
+  .map(u => u.trim())
+  .filter(Boolean);
+
+const resolvedOrigins = allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins;
+
+console.log('Allowed CORS origins:', resolvedOrigins);
+
 const app = express();
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000' }));
+app.use(cors({ origin: resolvedOrigins, credentials: true }));
 app.use(express.json());
 
 const httpServer = createServer(app);
-const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
 const io = new Server(httpServer, {
   cors: {
-    origin: frontendUrl,
-    methods: ['GET', 'POST']
+    origin: resolvedOrigins,
+    methods: ['GET', 'POST'],
+    credentials: true
   }
 });
 
