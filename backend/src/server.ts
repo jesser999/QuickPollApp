@@ -1,25 +1,26 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import cors from 'cors';
 import { store, Poll } from './store';
 import { randomUUID } from 'crypto';
 
-// Allow all origins dynamically (mirrors request origin back).
-// This supports credentials and works across Railway deployments
-// without needing to hardcode or configure FRONTEND_URL.
-const corsOptions = {
-  origin: true,
-  credentials: true,
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-};
-
-console.log('CORS: allowing all origins with credential support');
-
 const app = express();
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Handle preflight for all routes
+
+// Manual CORS middleware — works with Express 5 and any origin.
+// Mirrors the request origin back so credentials are supported.
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const origin = req.headers.origin || '*';
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  if (req.method === 'OPTIONS') {
+    res.sendStatus(200);
+    return;
+  }
+  next();
+});
+
 app.use(express.json());
 
 const httpServer = createServer(app);
@@ -32,11 +33,11 @@ const io = new Server(httpServer, {
   }
 });
 
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => {
   res.send('QuickPoll API is running');
 });
 
-app.post('/api/polls', async (req, res) => {
+app.post('/api/polls', async (req: Request, res: Response) => {
   try {
     const { question, options } = req.body;
     if (!question || !options || !Array.isArray(options) || options.length < 2) {
@@ -54,6 +55,7 @@ app.post('/api/polls', async (req, res) => {
     await store.savePoll(newPoll);
     res.status(201).json(newPoll);
   } catch (error) {
+    console.error('Error creating poll:', error);
     res.status(500).json({ error: 'Server error' });
   }
 });
@@ -83,13 +85,28 @@ io.on('connection', (socket) => {
   });
 });
 
+// Global error handler to prevent crashes
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled Rejection:', reason);
+});
+
 const PORT = process.env.PORT || 3001;
 
 async function start() {
-  await store.connect();
-  httpServer.listen(PORT, () => {
-    console.log(`Backend server running on port ${PORT}`);
-  });
+  try {
+    await store.connect();
+    httpServer.listen(PORT, () => {
+      console.log(`Backend server running on port ${PORT}`);
+    });
+  } catch (err) {
+    console.error('Failed to start server:', err);
+    process.exit(1);
+  }
 }
 
 start();
+
