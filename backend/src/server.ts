@@ -5,26 +5,28 @@ import cors from 'cors';
 import { store, Poll } from './store';
 import { randomUUID } from 'crypto';
 
-// Parse FRONTEND_URL as a comma-separated list so multiple origins are
-// supported without code changes (e.g. on Railway with custom domains).
-const allowedOrigins: string | string[] = (process.env.FRONTEND_URL || 'http://localhost:3000')
-  .split(',')
-  .map(u => u.trim())
-  .filter(Boolean);
+// Allow all origins dynamically (mirrors request origin back).
+// This supports credentials and works across Railway deployments
+// without needing to hardcode or configure FRONTEND_URL.
+const corsOptions = {
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
 
-const resolvedOrigins = allowedOrigins.length === 1 ? allowedOrigins[0] : allowedOrigins;
-
-console.log('Allowed CORS origins:', resolvedOrigins);
+console.log('CORS: allowing all origins with credential support');
 
 const app = express();
-app.use(cors({ origin: resolvedOrigins, credentials: true }));
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight for all routes
 app.use(express.json());
 
 const httpServer = createServer(app);
 
 const io = new Server(httpServer, {
   cors: {
-    origin: resolvedOrigins,
+    origin: true,
     methods: ['GET', 'POST'],
     credentials: true
   }
